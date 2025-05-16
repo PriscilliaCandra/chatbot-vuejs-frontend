@@ -36,17 +36,17 @@ export default {
   },
   methods: {
     async register() {
-      try {
-        await fetch("http://localhost:8000/sanctum/csrf-cookie", {
-          credentials: "include",
-        });
+      // try {
+      //   await fetch("http://localhost:8000/sanctum/csrf-cookie", {
+      //     credentials: "include",
+      //   });
 
-        const res = await fetch("http://localhost:8000/register", {
+        const res = await fetch("http://localhost:8000/api/register", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          credentials: "include",
+          // credentials: "include",
           body: JSON.stringify({
             name: this.name,
             email: this.email,
@@ -62,10 +62,10 @@ export default {
         }
 
         this.$router.push("/chat");
-      } catch (error) {
-        this.error = "Terjadi kesalahan. Coba lagi.";
-        console.error("Register error:", error);
-      }
+      // } catch (error) {
+      //   this.error = "Terjadi kesalahan. Coba lagi.";
+      //   console.error("Register error:", error);
+      // }
     },
   },
 };

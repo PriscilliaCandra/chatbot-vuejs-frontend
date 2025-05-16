@@ -28,17 +28,13 @@ export default {
   methods: {
     async login() {
       try {
-        // CSRF cookie untuk Sanctum
-        await fetch("http://localhost:8000/sanctum/csrf-cookie", {
-          credentials: "include",
-        });
-
-        const res = await fetch("http://localhost:8000/login", {
+        const res = await fetch("http://localhost:8000/api/login", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Accept": "application/json"
           },
-          credentials: "include", // penting agar session dikirim
+          credentials: "include",
           body: JSON.stringify({
             email: this.email,
             password: this.password,
@@ -49,6 +45,11 @@ export default {
           const data = await res.json();
           this.error = data.message || "Login gagal.";
           return;
+        }
+
+        const data = await res.json();
+        if (data.token) {
+          localStorage.setItem("token", data.token);
         }
 
         this.$router.push("/chat");

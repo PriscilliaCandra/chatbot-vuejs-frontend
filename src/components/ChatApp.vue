@@ -51,30 +51,43 @@ export default {
       this.loading = true;
 
       try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          throw new Error("No authentication token found");
+        }
+
         const res = await fetch("http://localhost:8000/api/chat", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": `Bearer ${token}`
           },
+          credentials: "include",
           body: JSON.stringify({ text }),
         });
 
-        console.log(res); // Debug response status
-
         if (!res.ok) {
+          if (res.status === 401) {
+            // Token tidak valid atau expired
+            localStorage.removeItem("token");
+            this.$router.push("/login");
+            return;
+          }
           throw new Error("Failed to fetch: " + res.status);
         }
 
         const data = await res.json();
-        console.log(data); // Debug response data
-
         this.messages.push({
           sender: "bot",
           text: data.result || "Gagal mendapatkan respons",
         });
       } catch (error) {
-        console.error("Error during request:", error); // Debug error
-        this.messages.push({ sender: "bot", text: "Terjadi kesalahan" });
+        console.error("Error during request:", error);
+        this.messages.push({ 
+          sender: "bot", 
+          text: "Terjadi kesalahan: " + error.message 
+        });
       } finally {
         this.loading = false;
         this.$nextTick(() => {
@@ -93,7 +106,6 @@ export default {
 
 <style scoped>
 html, body {
-  overflow: hidden;
   height: 100%;
   margin: 0;
 }
@@ -102,8 +114,9 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 80vh;
-  max-width: 1000px;
+  max-width: 800px;
   margin: auto;
+  margin-top: 50px;
   border: 1px solid #ddd;
   font-family: sans-serif;
   background: #fff;
@@ -113,6 +126,7 @@ html, body {
   flex-grow: 1;
   padding: 1rem;
   background: #f5f5f5;
+  overflow-y: auto;
 }
 
 .message {
