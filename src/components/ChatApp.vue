@@ -4,13 +4,19 @@
 
 <template>
   <div class="chat-wrapper">
+    <div class="header-bar">
+      <button @click="logoutUser" class="logout-button">Logout</button>
+    </div>
     <div class="chat-window" ref="chatWindow">
       <div
         v-for="(msg, index) in messages"
         :key="index"
         :class="['message', msg.sender]"
       >
-        <div class="bubble">{{ msg.text }}</div>
+        <div class="bubble">
+          {{ msg.text }}
+          <div v-if="msg.created_at" class="timestamp">{{ msg.created_at }}</div>
+        </div>
       </div>
       <div v-if="loading" class="message bot">
         <div class="bubble loading">Typing...</div>
@@ -84,9 +90,9 @@ export default {
         });
       } catch (error) {
         console.error("Error during request:", error);
-        this.messages.push({ 
-          sender: "bot", 
-          text: "Terjadi kesalahan: " + error.message 
+        this.messages.push({
+          sender: "bot",
+          text: "Terjadi kesalahan: " + error.message
         });
       } finally {
         this.loading = false;
@@ -100,6 +106,92 @@ export default {
       const container = this.$refs.chatWindow;
       container.scrollTop = container.scrollHeight;
     },
+
+    async fetchChatHistory() {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          console.error("No token found for fetching history.");
+          return;
+        }
+        const response = await fetch("http://localhost:8000/api/history", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": "Bearer " + token,
+          },
+          credentials: "include",
+        });
+        if (response.ok) {
+          const history = await response.json();
+          const formattedMessages = history.flatMap((item) => [
+            {
+              sender: "user",
+              text: item.user_message,
+              created_at: new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(item.created_at).toLocaleDateString(),
+            },
+            {
+              sender: "bot",
+              text: item.ai_response,
+              created_at: new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(item.created_at).toLocaleDateString(),
+            },
+          ]);
+          this.messages = formattedMessages;
+        } else {
+          console.error("Failed to fetch chat history:", response.status, await response.text());
+           if (response.status === 401) {
+            localStorage.removeItem("token");
+            this.$router.push("/login");
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching chat history:", error);
+      }
+    },
+    async logoutUser() {
+      try {
+        const token = localStorage.getItem('token'); 
+
+        if (!token) {
+          console.error('No token found, cannot logout.');
+          // Mungkin sudah logout atau token tidak pernah ada
+          this.$router.push('/login'); // Redirect ke login untuk jaga-jaga
+          return;
+        }
+
+        const response = await fetch('http://localhost:8000/api/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          credentials: 'include', // Jika server Anda memerlukan credentials
+          // Body bisa kosong jika backend tidak memerlukannya untuk logout
+          // body: JSON.stringify({}), 
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log(data.message || "Successfully logged out"); 
+        } else {
+          // Bahkan jika logout gagal di server (misal token sudah expired), 
+          // kita tetap ingin membersihkan sisi client dan redirect.
+          console.warn('Logout request failed or token was invalid. Clearing client-side token.');
+        }
+
+      } catch (error) {
+        console.error('Logout failed:', error);
+      } finally {
+        // Selalu hapus token dari client dan redirect, apapun hasil dari server
+        localStorage.removeItem('token');
+        this.$router.push('/login'); 
+      }
+    }
+  },
+  mounted() {
+    this.fetchChatHistory();
   },
 };
 </script>
@@ -148,6 +240,22 @@ html, body {
   border-radius: 20px;
   word-wrap: break-word;
   text-align: left;
+  position: relative;
+}
+
+.timestamp {
+  font-size: 0.7rem;
+  color: #888;
+  margin-top: 5px;
+  text-align: right;
+}
+
+.message.user .bubble .timestamp {
+  text-align: right;
+}
+
+.message.bot .bubble .timestamp {
+  text-align: left;
 }
 
 .message.user .bubble {
@@ -187,5 +295,27 @@ html, body {
 .input-area button:disabled {
   background: #a5d6c8;
   cursor: not-allowed;
+}
+
+.header-bar {
+  display: flex;
+  justify-content: flex-end; /* Posisikan tombol logout ke kanan */
+  padding: 0.5rem 1rem;
+  background-color: #f5f5f5; /* Sesuaikan dengan tema Anda */
+  border-bottom: 1px solid #ddd;
+}
+
+.logout-button {
+  padding: 0.5rem 1rem;
+  background-color: #e74c3c; /* Warna merah untuk logout */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.logout-button:hover {
+  background-color: #c0392b;
 }
 </style> 
